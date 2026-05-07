@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buku Induk Digital</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<script>
+  // ============================================================
+  // KONFIGURASI — Ganti dengan kredensial Supabase Anda
+  // Setelah deploy ke Vercel, ini akan otomatis terisi
+  // ============================================================
+  const SUPABASE_URL  = "https://ucbxurykomjuwgdmhhpc.supabase.co/rest/v1/";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjYnh1cnlrb21qdXdnZG1oaHBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjg5MzksImV4cCI6MjA5Mzc0NDkzOX0.nOsaZU82zmhjXD5CSp_Jru3K3V9oWGrDrBhjFPOj13Y";
+</script>
+<style>
+/* Semua style sama persis dengan versi supabase */
+:root{
+  --blue-900:#0a1628;--blue-800:#0d2240;--blue-700:#0f3460;--blue-600:#1a4d8a;
+  --blue-500:#2563eb;--blue-400:#3b82f6;--blue-300:#93c5fd;--blue-100:#dbeafe;
+  --green-700:#065f46;--green-600:#059669;--green-500:#10b981;--green-400:#34d399;
+  --green-300:#6ee7b7;--green-100:#d1fae5;
+  --white:#ffffff;--gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;
+  --gray-400:#94a3b8;--gray-600:#475569;--gray-800:#1e293b;
+  --danger:#ef4444;--warning:#f59e0b;
+  --radius:14px;--radius-sm:8px;--radius-lg:20px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.16);--shadow-xl:0 20px 60px rgba(0,0,0,.22)
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;overflow-x:hidden}
+.hidden{display:none!important}
+#global-loading{position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:8888;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;backdrop-filter:blur(4px)}
+.spinner{width:44px;height:44px;border:4px solid var(--blue-100);border-top-color:var(--blue-500);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast-container{position:fixed;top:20px;right:20px;z-index:9997;display:flex;flex-direction:column;gap:10px}
+.toast{padding:13px 18px;border-radius:8px;font-size:14px;font-weight:600;color:#fff;box-shadow:var(--shadow-lg);animation:slideIn .3s ease;display:flex;align-items:center;gap:9px;max-width:320px}
+.toast.success{background:var(--green-600)}.toast.error{background:var(--danger)}.toast.info{background:var(--blue-500)}.toast.warning{background:var(--warning)}
+@keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
+.page{display:none;min-height:100vh;flex-direction:column}
+.page.active{display:flex}
+/* LOGIN */
+#page-login{background:linear-gradient(135deg,var(--blue-900) 0%,var(--blue-700) 50%,var(--green-700) 100%);justify-content:center;align-items:center;position:relative;overflow:hidden}
+.bg-shapes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.bs{position:absolute;border-radius:50%;opacity:.07}
+.bs1{width:600px;height:600px;background:var(--blue-300);top:-200px;left:-200px;animation:fl1 8s ease-in-out infinite}
+.bs2{width:400px;height:400px;background:var(--green-400);bottom:-150px;right:-100px;animation:fl2 10s ease-in-out infinite}
+.bs3{width:250px;height:250px;background:var(--blue-400);top:50%;right:10%;animation:fl1 7s ease-in-out infinite reverse}
+@keyframes fl1{0%,100%{transform:translateY(0)}50%{transform:translateY(-30px)}}
+@keyframes fl2{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+.login-card{position:relative;z-index:2;background:rgba(255,255,255,.97);border-radius:24px;padding:44px 40px;width:100%;max-width:430px;box-shadow:0 30px 80px rgba(0,0,0,.4);animation:pop .5s ease;margin:20px}
+@keyframes pop{from{transform:scale(.9) translateY(30px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.logo-wrap{text-align:center;margin-bottom:26px}
+.logo-icon{width:72px;height:72px;background:linear-gradient(135deg,var(--blue-600),var(--green-600));border-radius:18px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 8px 24px rgba(37,99,235,.3)}
+.logo-icon svg{width:36px;height:36px;fill:none;stroke:#fff;stroke-width:2}
+.logo-wrap h1{font-family:'Playfair Display',serif;font-size:22px;color:var(--blue-900)}
+.logo-wrap p{font-size:13px;color:var(--gray-600);margin-top:3px}
+.school-banner{background:linear-gradient(135deg,var(--blue-600),var(--green-600));border-radius:12px;padding:12px 16px;text-align:center;margin-bottom:22px;color:#fff}
+.school-banner h2{font-size:14px;font-weight:700}
+.school-banner p{font-size:12px;opacity:.85;margin-top:2px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--gray-800);margin-bottom:5px}
+.inp-wrap{position:relative}
+.inp-wrap input{width:100%;padding:12px 16px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;outline:none;transition:.2s}
+.inp-wrap input:focus{border-color:var(--blue-500);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.toggle-pw{position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);padding:4px;transition:.2s}
+.toggle-pw:hover{color:var(--blue-500)}
+.btn-login{width:100%;padding:14px;background:linear-gradient(135deg,var(--blue-600),var(--green-600));color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+.btn-login:hover{transform:translateY(-1px)}
+.online-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--green-600);font-weight:600;margin-top:14px;justify-content:center;width:100%}
+.online-dot{width:8px;height:8px;background:var(--green-500);border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+/* UNAUTHORIZED */
+#page-unauthorized{background:linear-gradient(135deg,var(--blue-900),var(--blue-700));justify-content:center;align-items:center}
+.unauth-card{background:#fff;border-radius:24px;padding:48px 38px;text-align:center;max-width:390px;width:100%;margin:20px;box-shadow:var(--shadow-xl)}
+.unauth-icon{width:76px;height:76px;background:#fef2f2;border-radius:20px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:18px}
+.unauth-icon svg{width:38px;height:38px;stroke:var(--danger);fill:none;stroke-width:2}
+.unauth-card h2{font-size:21px;font-weight:800;color:var(--gray-800);margin-bottom:10px}
+.unauth-card p{font-size:13px;color:var(--gray-600);line-height:1.6;margin-bottom:22px}
+.btn-hubungi{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;background:linear-gradient(135deg,var(--blue-600),var(--green-600));color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+.btn-hubungi:hover{transform:translateY(-2px)}
+.btn-back-plain{display:block;margin-top:14px;font-size:13px;color:var(--gray-400);cursor:pointer;background:none;border:none;font-family:inherit}
+.btn-back-plain:hover{color:var(--blue-500)}
+/* CONTACT */
+#page-contact{background:var(--gray-50);justify-content:center;align-items:center}
+.contact-card{background:#fff;border-radius:24px;padding:40px;max-width:440px;width:100%;margin:20px;box-shadow:var(--shadow-lg)}
+.contact-card h2{font-size:21px;font-weight:800;color:var(--blue-900);margin-bottom:5px}
+.contact-card>p{font-size:13px;color:var(--gray-600);margin-bottom:24px}
+.ci-row{display:flex;align-items:center;gap:13px;padding:14px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--gray-200);margin-bottom:10px}
+.ci-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ci-label{font-size:11px;color:var(--gray-400);font-weight:500}
+.ci-val{font-size:14px;font-weight:700;color:var(--gray-800)}
+.btn-back-login{width:100%;padding:12px;border:2px solid var(--blue-500);color:var(--blue-500);background:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;margin-top:6px}
+.btn-back-login:hover{background:var(--blue-500);color:#fff}
+/* NAVBAR */
+.navbar{background:linear-gradient(135deg,var(--blue-800),var(--blue-900));color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:62px;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.nb-brand{display:flex;align-items:center;gap:11px}
+.nb-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--blue-500),var(--green-500));border-radius:9px;display:flex;align-items:center;justify-content:center}
+.nb-icon svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2}
+.nb-brand h1{font-size:15px;font-weight:800}
+.nb-brand span{font-size:11px;opacity:.65}
+.nb-right{display:flex;align-items:center;gap:10px}
+.user-chip{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.1);padding:5px 13px 5px 5px;border-radius:50px}
+.uc-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--green-500),var(--blue-500));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0}
+.uc-av img{width:100%;height:100%;object-fit:cover}
+.uc-name{font-size:13px;font-weight:600}
+.uc-role{font-size:10px;opacity:.65}
+.btn-logout{padding:7px 13px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+.btn-logout:hover{background:rgba(239,68,68,.3)}
+/* MAIN */
+.main{flex:1;padding:24px;max-width:1200px;margin:0 auto;width:100%}
+.pg-header{margin-bottom:22px}
+.pg-header h2{font-size:23px;font-weight:800;color:var(--blue-900)}
+.pg-header p{font-size:13px;color:var(--gray-600);margin-top:4px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px;margin-bottom:22px}
+.stat-card{background:#fff;border-radius:var(--radius);padding:18px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-100);display:flex;align-items:center;gap:13px}
+.st-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.st-icon svg{width:22px;height:22px;fill:none;stroke-width:2}
+.st-val{font-size:24px;font-weight:800;color:var(--blue-900);line-height:1}
+.st-label{font-size:11px;color:var(--gray-400);font-weight:500;margin-top:3px}
+.sc{background:#fff;border-radius:var(--radius);padding:22px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-100);margin-bottom:18px}
+.sc h3{font-size:15px;font-weight:700;color:var(--blue-900);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.tabs{display:flex;border-bottom:2px solid var(--gray-200);margin-bottom:22px;overflow-x:auto}
+.tab-btn{padding:11px 18px;font-size:13px;font-weight:600;color:var(--gray-400);background:none;border:none;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap}
+.tab-btn.active{color:var(--blue-600);border-bottom-color:var(--blue-600)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;padding:10px 13px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.6px;background:var(--gray-50);border-bottom:2px solid var(--gray-100)}
+.tbl td{padding:12px 13px;font-size:13px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+.tbl tr:hover td{background:#f8fdff}
+.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.b-blue{background:var(--blue-100);color:var(--blue-600)}.b-green{background:var(--green-100);color:var(--green-700)}.b-gray{background:var(--gray-100);color:var(--gray-600)}
+.cb{height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden;width:76px}
+.cf{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue-500),var(--green-500))}
+.act-btns{display:flex;gap:5px}
+.btn-sm{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.2s}
+.btn-view{background:var(--blue-100);color:var(--blue-600)}.btn-view:hover{background:var(--blue-500);color:#fff}
+.btn-edit{background:var(--green-100);color:var(--green-700)}.btn-edit:hover{background:var(--green-500);color:#fff}
+.btn-del{background:#fef2f2;color:var(--danger)}.btn-del:hover{background:var(--danger);color:#fff}
+.sf-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.sb{flex:1;min-width:180px;position:relative}
+.sb input{width:100%;padding:9px 14px 9px 38px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;outline:none;transition:.2s}
+.sb input:focus{border-color:var(--blue-500)}
+.sb svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--gray-400);fill:none;stroke-width:2}
+.fsel{padding:9px 13px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:#fff;outline:none;cursor:pointer}
+.tmpl-row{display:flex;gap:9px;align-items:center;background:var(--gray-50);padding:11px 13px;border-radius:var(--radius-sm);border:1px solid var(--gray-200);margin-bottom:8px}
+.tr-name{flex:1;font-size:13px;font-weight:600}
+.tr-type{font-size:11px;color:var(--gray-400);background:var(--gray-100);padding:2px 7px;border-radius:4px}
+.tr-req{font-size:11px;color:var(--danger);font-weight:700}
+.add-field-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-200)}
+.add-field-form input,.add-field-form select{flex:1;min-width:130px;padding:9px 12px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;outline:none;transition:.2s}
+.add-field-form input:focus,.add-field-form select:focus{border-color:var(--green-500)}
+.btn-add{padding:9px 18px;background:linear-gradient(135deg,var(--green-600),var(--blue-600));color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.2s}
+.btn-add:hover{transform:translateY(-1px)}
+.asf{background:var(--gray-50);border-radius:var(--radius-sm);padding:18px;border:1px solid var(--gray-200);margin-bottom:14px}
+.asf h4{font-size:13px;font-weight:700;color:var(--blue-900);margin-bottom:12px}
+.asf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px}
+.asf-grid input{padding:9px 12px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;outline:none;transition:.2s}
+.excel-tools{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:20px}
+.btn-xl{padding:10px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;display:flex;align-items:center;gap:6px;border:2px solid}
+.xl-exp{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7}.xl-exp:hover{background:#2e7d32;color:#fff}
+.xl-imp{background:#e3f2fd;color:#1565c0;border-color:#90caf9}.xl-imp:hover{background:#1565c0;color:#fff}
+.xl-tpl{background:#fff8e1;color:#e65100;border-color:#ffcc80}.xl-tpl:hover{background:#e65100;color:#fff}
+.cw{background:linear-gradient(135deg,var(--blue-800),var(--green-700));border-radius:var(--radius);padding:18px 22px;color:#fff;margin-bottom:18px;display:flex;align-items:center;gap:18px}
+.cw-info h3{font-size:17px;font-weight:800}
+.cw-info p{font-size:12px;opacity:.8;margin-top:3px}
+.cw-bar{height:7px;background:rgba(255,255,255,.2);border-radius:4px;margin-top:8px;overflow:hidden;min-width:180px}
+.cw-fill{height:100%;border-radius:4px;background:#fff;transition:.5s}
+.dp{background:#fff;border-radius:var(--radius);border:1px solid var(--gray-100);overflow:hidden;margin-bottom:18px}
+.dp-hdr{padding:18px 22px;background:linear-gradient(135deg,var(--blue-800),var(--blue-900));color:#fff;display:flex;align-items:center;gap:16px}
+.dp-av{width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,.3);background:linear-gradient(135deg,var(--blue-500),var(--green-500));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.dp-av img{width:100%;height:100%;object-fit:cover}
+.dp-info h3{font-size:18px;font-weight:800}
+.dp-info p{font-size:12px;opacity:.75;margin-top:3px}
+.dp-body{padding:20px 22px}
+.dp-sec-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--blue-600);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--blue-100)}
+.dp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.dp-field{background:var(--gray-50);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--gray-200)}
+.dp-field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400)}
+.dp-field .val{font-size:13px;font-weight:600;color:var(--gray-800);margin-top:3px}
+.dp-field .val.empty{color:var(--gray-400);font-style:italic;font-weight:400}
+.dp-acts{padding:14px 22px;border-top:1px solid var(--gray-100);display:flex;gap:9px;flex-wrap:wrap}
+.btn-edit-data{padding:10px 20px;background:var(--blue-100);color:var(--blue-600);border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;display:flex;align-items:center;gap:5px}
+.btn-edit-data:hover{background:var(--blue-500);color:#fff}
+.ef{display:none;padding:20px 22px;border-top:1px solid var(--gray-100)}
+.ef.active{display:block}
+.ef-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.ef-field label{display:block;font-size:12px;font-weight:700;color:var(--gray-800);margin-bottom:4px}
+.ef-field input,.ef-field textarea,.ef-field select{width:100%;padding:9px 12px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;outline:none;transition:.2s}
+.ef-field input:focus,.ef-field textarea:focus,.ef-field select:focus{border-color:var(--blue-500)}
+.ef-field textarea{resize:vertical;min-height:72px}
+.ef-acts{display:flex;gap:9px;margin-top:14px}
+.btn-save{padding:11px 22px;background:linear-gradient(135deg,var(--blue-600),var(--green-600));color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+.btn-save:hover{transform:translateY(-1px)}
+.btn-cancel{padding:11px 22px;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s}
+.pua{display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px;border:2px dashed var(--gray-200);border-radius:var(--radius);text-align:center;transition:.2s;cursor:pointer;margin-bottom:16px}
+.pua:hover{border-color:var(--blue-400);background:var(--blue-100)}
+.pua-img{width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--blue-300);background:var(--gray-100)}
+.photo-btns{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+.btn-ph{padding:7px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:2px solid;transition:.2s}
+.btn-cam{background:var(--green-100);color:var(--green-700);border-color:var(--green-300)}.btn-cam:hover{background:var(--green-500);color:#fff}
+.btn-fil{background:var(--blue-100);color:var(--blue-600);border-color:var(--blue-300)}.btn-fil:hover{background:var(--blue-500);color:#fff}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.modal-ov.hidden{display:none}
+.modal{background:#fff;border-radius:var(--radius-lg);padding:28px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-xl);animation:pop .3s ease}
+.modal h3{font-size:18px;font-weight:800;color:var(--blue-900);margin-bottom:18px}
+.modal-acts{display:flex;gap:9px;margin-top:22px;justify-content:flex-end}
+.log-item{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--gray-100)}
+.log-dot{width:7px;height:7px;border-radius:50%;background:var(--blue-500);margin-top:5px;flex-shrink:0}
+.log-text{font-size:12px;color:var(--gray-800)}
+.log-time{font-size:10px;color:var(--gray-400);margin-top:2px}
+@media(max-width:600px){
+  .login-card{padding:28px 20px;margin:14px}
+  .main{padding:14px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .navbar{padding:0 14px}
+  .dp-hdr{flex-direction:column;text-align:center}
+  .ef-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="global-loading" class="hidden">
+  <div class="spinner"></div>
+  <div style="font-size:14px;font-weight:600;color:var(--blue-700)">Memuat data...</div>
+</div>
+<div id="toast-container"></div>
+
+<!-- LOGIN -->
+<div id="page-login" class="page active">
+  <div class="bg-shapes"><div class="bs bs1"></div><div class="bs bs2"></div><div class="bs bs3"></div></div>
+  <div class="login-card">
+    <div class="logo-wrap">
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <h1>Buku Induk Digital</h1>
+      <p>Sistem Informasi Data Peserta Didik</p>
+    </div>
+    <div class="school-banner"><h2>🏫 Portal Akademik Sekolah</h2><p>Silahkan login untuk melanjutkan</p></div>
+    <div class="form-group">
+      <label>Username (Nama Lengkap)</label>
+      <div class="inp-wrap"><input type="text" id="login-user" placeholder="Masukkan nama lengkap..."></div>
+    </div>
+    <div class="form-group">
+      <label>Password (NISN)</label>
+      <div class="inp-wrap">
+        <input type="password" id="login-pass" placeholder="Masukkan password...">
+        <button class="toggle-pw" onclick="togglePw()">
+          <svg id="eye-show" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg id="eye-hide" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+      </div>
+    </div>
+    <button class="btn-login" onclick="doLogin()">Masuk ke Sistem</button>
+    <div class="online-badge"><span class="online-dot"></span> Terhubung Online — Data Real-Time</div>
+  </div>
+</div>
+
+<!-- UNAUTHORIZED -->
+<div id="page-unauthorized" class="page">
+  <div class="unauth-card">
+    <div class="unauth-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+    <h2>Akses Ditolak</h2>
+    <p>Username atau password tidak terdaftar. Hubungi administrator.</p>
+    <button class="btn-hubungi" onclick="showPage('page-contact')">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.32 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.59a16 16 0 0 0 5.5 5.5l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg>
+      Silahkan Hubungi Admin
+    </button>
+    <button class="btn-back-plain" onclick="showPage('page-login')">← Kembali ke Login</button>
+  </div>
+</div>
+
+<!-- CONTACT -->
+<div id="page-contact" class="page">
+  <div class="contact-card">
+    <h2>📞 Kontak Administrator</h2>
+    <p>Hubungi admin sekolah untuk mendaftarkan akun Anda.</p>
+    <div class="ci-row"><div class="ci-icon" style="background:#e3f2fd"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#1565c0" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.32 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.59a16 16 0 0 0 5.5 5.5l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16.92z"/></svg></div><div><div class="ci-label">WhatsApp</div><div class="ci-val">0812-3456-7890</div></div></div>
+    <div class="ci-row"><div class="ci-icon" style="background:#e8f5e9"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2e7d32" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div><div class="ci-label">Email</div><div class="ci-val">admin@sekolah.sch.id</div></div></div>
+    <button class="btn-back-login" onclick="showPage('page-login')">← Kembali ke Login</button>
+  </div>
+</div>
+
+<!-- STUDENT PAGE -->
+<div id="page-student" class="page">
+  <nav class="navbar">
+    <div class="nb-brand"><div class="nb-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div><h1>Buku Induk Digital</h1><span>Portal Siswa</span></div></div>
+    <div class="nb-right">
+      <div class="user-chip"><div class="uc-av" id="nav-av-stu"><span id="nav-init-stu">S</span></div><div><div class="uc-name" id="nav-name-stu">Siswa</div><div class="uc-role">Peserta Didik</div></div></div>
+      <button class="btn-logout" onclick="doLogout()">Keluar</button>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="pg-header"><h2 id="stu-welcome">Selamat Datang</h2><p>Lihat dan lengkapi data profil Anda</p></div>
+    <div class="cw">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="6"/>
+        <circle cx="32" cy="32" r="28" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-dasharray="175.9" id="cw-arc" stroke-dashoffset="175.9" transform="rotate(-90 32 32)" style="transition:.5s"/>
+        <text x="32" y="37" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" id="cw-pct">0%</text>
+      </svg>
+      <div class="cw-info"><h3>Kelengkapan Profil</h3><p id="cw-desc">Isi data lengkap untuk profil sempurna</p><div class="cw-bar"><div class="cw-fill" id="cw-fill" style="width:0%"></div></div></div>
+    </div>
+    <div class="dp" id="dp-wrap">
+      <div class="dp-hdr">
+        <div class="dp-av" id="dp-av"><span id="dp-init">S</span><img id="dp-img" src="" style="display:none"></div>
+        <div class="dp-info"><h3 id="dp-name">Nama Siswa</h3><p id="dp-nisn">NISN: —</p></div>
+      </div>
+      <div class="dp-body" id="dp-body"></div>
+      <div class="dp-acts">
+        <button class="btn-edit-data" onclick="toggleEdit()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Ubah Data</button>
+        <button class="btn-sm btn-view" style="padding:9px 16px" onclick="window.print()">🖨 Cetak</button>
+      </div>
+      <div class="ef" id="ef-wrap">
+        <div style="margin-bottom:18px">
+          <div style="font-size:12px;font-weight:700;color:var(--blue-900);margin-bottom:8px">📸 Foto Profil</div>
+          <div class="pua" onclick="document.getElementById('ph-file').click()">
+            <img id="ph-preview" class="pua-img" src="" style="display:none">
+            <div id="ph-placeholder" style="font-size:30px">👤</div>
+            <div style="font-size:12px;color:var(--gray-600)">Klik untuk pilih foto</div>
+            <div class="photo-btns" onclick="event.stopPropagation()">
+              <button class="btn-ph btn-cam" onclick="openCam()">📷 Kamera</button>
+              <button class="btn-ph btn-fil" onclick="document.getElementById('ph-file').click()">📁 Berkas</button>
+            </div>
+          </div>
+          <input type="file" id="ph-file" accept="image/*" onchange="handlePhoto(event)" style="display:none">
+          <input type="file" id="ph-cam" accept="image/*" capture="environment" onchange="handlePhoto(event)" style="display:none">
+        </div>
+        <div class="ef-grid" id="ef-fields"></div>
+        <div class="ef-acts">
+          <button class="btn-save" onclick="saveStudentData()">💾 Simpan Data</button>
+          <button class="btn-cancel" onclick="toggleEdit()">Batal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="page-admin" class="page">
+  <nav class="navbar">
+    <div class="nb-brand"><div class="nb-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div><h1>Buku Induk Digital</h1><span>Dashboard Admin</span></div></div>
+    <div class="nb-right">
+      <div class="user-chip"><div class="uc-av">A</div><div><div class="uc-name">Administrator</div><div class="uc-role">Akses Penuh</div></div></div>
+      <button class="btn-logout" onclick="doLogout()">Keluar</button>
+    </div>
+  </nav>
+  <div class="main">
+    <div class="pg-header"><h2>Dashboard Administrator</h2><p>Kelola data siswa secara real-time</p></div>
+    <div class="stats-grid" id="adm-stats"></div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-dash',this)">📊 Siswa</button>
+      <button class="tab-btn" onclick="switchTab('tab-tmpl',this)">📋 Template</button>
+      <button class="tab-btn" onclick="switchTab('tab-accs',this)">👥 Akun</button>
+      <button class="tab-btn" onclick="switchTab('tab-xl',this)">📊 Excel</button>
+      <button class="tab-btn" onclick="switchTab('tab-log',this)">📜 Log</button>
+    </div>
+    <div id="tab-dash" class="tab-panel active">
+      <div class="sc"><h3>📋 Daftar Siswa</h3>
+        <div class="sf-row">
+          <div class="sb"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="srch" placeholder="Cari nama, NISN, kelas..." oninput="filterStudents()"></div>
+          <select class="fsel" id="fcls" onchange="filterStudents()"><option value="">Semua Kelas</option></select>
+          <select class="fsel" id="fcmp" onchange="filterStudents()"><option value="">Semua Status</option><option value="lengkap">Lengkap ≥80%</option><option value="belum">Belum Lengkap</option></select>
+        </div>
+        <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>Foto</th><th>Nama</th><th>NISN</th><th>Kelas</th><th>Kelengkapan</th><th>Aksi</th></tr></thead><tbody id="stu-tbody"></tbody></table></div>
+        <div id="no-stu" class="hidden" style="text-align:center;padding:36px;color:var(--gray-400)">Belum ada data siswa</div>
+      </div>
+    </div>
+    <div id="tab-tmpl" class="tab-panel">
+      <div class="sc"><h3>📋 Builder Template</h3>
+        <p style="font-size:12px;color:var(--gray-600);margin-bottom:14px">Field yang ditambahkan langsung real-time ke semua perangkat.</p>
+        <div id="tmpl-list"></div>
+        <div class="add-field-form">
+          <input type="text" id="nf-name" placeholder="Nama field">
+          <select id="nf-type" onchange="toggleOpts()"><option value="text">Teks Pendek</option><option value="textarea">Teks Panjang</option><option value="date">Tanggal</option><option value="number">Angka</option><option value="select">Dropdown</option><option value="email">Email</option></select>
+          <input type="text" id="nf-opts" placeholder="Opsi (pisah koma)" style="display:none">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap"><input type="checkbox" id="nf-req"> Wajib</label>
+          <button class="btn-add" onclick="addField()">+ Tambah</button>
+        </div>
+      </div>
+    </div>
+    <div id="tab-accs" class="tab-panel">
+      <div class="sc"><h3>👥 Manajemen Akun Siswa</h3>
+        <div class="asf"><h4>➕ Tambah Akun Siswa Baru</h4>
+          <div class="asf-grid">
+            <input type="text" id="ns-name" placeholder="Nama Lengkap Siswa">
+            <input type="text" id="ns-nisn" placeholder="NISN (10 digit)" maxlength="10">
+            <input type="text" id="ns-class" placeholder="Kelas (X-A, VII-B)">
+          </div>
+          <button class="btn-add" onclick="addStudent()">+ Tambah Akun</button>
+        </div>
+        <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>Nama</th><th>NISN</th><th>Kelas</th><th>Data</th><th>Aksi</th></tr></thead><tbody id="accs-tbody"></tbody></table></div>
+      </div>
+    </div>
+    <div id="tab-xl" class="tab-panel">
+      <div class="sc"><h3>📊 Excel — Import & Export</h3>
+        <div class="excel-tools">
+          <button class="btn-xl xl-tpl" onclick="downloadTemplate()">📥 Template Excel</button>
+          <button class="btn-xl xl-imp" onclick="document.getElementById('xl-inp').click()">📤 Import Excel</button>
+          <button class="btn-xl xl-exp" onclick="exportData()">📊 Export Data</button>
+          <button class="btn-xl xl-exp" onclick="exportAccounts()">👥 Export Akun</button>
+        </div>
+        <input type="file" id="xl-inp" accept=".xlsx,.xls" onchange="importExcel(event)" style="display:none">
+        <div style="background:var(--gray-50);border-radius:8px;padding:14px;border:1px solid var(--gray-200)">
+          <div style="font-size:12px;font-weight:700;color:var(--blue-900);margin-bottom:7px">Petunjuk Import:</div>
+          <ol style="font-size:12px;color:var(--gray-600);line-height:2.2;padding-left:16px">
+            <li>Download Template Excel</li><li>Isi data siswa sesuai kolom</li>
+            <li>Simpan lalu klik Import</li><li>Data tersimpan ke database online</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+    <div id="tab-log" class="tab-panel">
+      <div class="sc"><h3>📜 Log Aktivitas</h3>
+        <div id="log-list" style="max-height:380px;overflow-y:auto"></div>
+        <button class="btn-sm btn-del" onclick="clearLog()" style="margin-top:10px">🗑 Hapus Log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Student -->
+<div class="modal-ov hidden" id="modal-stu">
+  <div class="modal"><h3 id="modal-title">Data Siswa</h3><div id="modal-body"></div>
+    <div class="modal-acts"><button class="btn-cancel" onclick="closeModal()">Tutup</button><button class="btn-save" id="modal-save" onclick="saveAdminEdit()" style="display:none">💾 Simpan</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Camera -->
+<div class="modal-ov hidden" id="modal-cam">
+  <div class="modal" style="max-width:420px;text-align:center">
+    <h3>📷 Ambil Foto</h3>
+    <video id="cam-vid" style="width:100%;border-radius:12px;background:#000;max-height:260px" autoplay playsinline></video>
+    <canvas id="cam-cnv" style="display:none"></canvas>
+    <div class="modal-acts" style="justify-content:center">
+      <button class="btn-save" onclick="capPhoto()">📸 Ambil</button>
+      <button class="btn-cancel" onclick="closeCam()">Batal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// INIT SUPABASE — Menggunakan konstanta di atas
+// ============================================================
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let currentUser=null,currentStuId=null,editingStuId=null,camStream=null;
+let allStudents=[],template=[],studentDataCache={},photosCache={};
+
+window.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+  document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+});
+
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function showLoading(){document.getElementById('global-loading').classList.remove('hidden')}
+function hideLoading(){document.getElementById('global-loading').classList.add('hidden')}
+function toast(msg,type='info'){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className=`toast ${type}`;const icons={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'};t.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='.3s';setTimeout(()=>t.remove(),300)},3000)}
+function togglePw(){const i=document.getElementById('login-pass');const s=document.getElementById('eye-show');const h=document.getElementById('eye-hide');if(i.type==='password'){i.type='text';s.style.display='none';h.style.display='block';}else{i.type='password';s.style.display='block';h.style.display='none';}}
+function toggleOpts(){const t=document.getElementById('nf-type').value;document.getElementById('nf-opts').style.display=t==='select'?'block':'none'}
+function switchTab(id,btn){document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById(id).classList.add('active');btn.classList.add('active');if(id==='tab-tmpl')renderTemplate();if(id==='tab-accs')renderAccounts();if(id==='tab-log')renderLog()}
+
+async function doLogin(){
+  const name=document.getElementById('login-user').value.trim();
+  const pass=document.getElementById('login-pass').value.trim();
+  if(!name||!pass){toast('Username dan password wajib diisi','warning');return}
+  showLoading();
+  try{
+    const{data,error}=await sb.from('accounts').select('*').eq('nisn',pass).limit(1);
+    if(error)throw error;
+    const acc=data.find(a=>a.name.toLowerCase()===name.toLowerCase());
+    if(!acc){await addLog(`Login gagal: "${name}"`,'system');hideLoading();showPage('page-unauthorized');return}
+    currentUser=acc;
+    await addLog(`Login: ${acc.name} (${acc.role})`,acc.id);
+    if(acc.role==='admin'){await loadAdmin();showPage('page-admin');}
+    else{currentStuId=acc.id;await loadStudent();showPage('page-student');}
+    document.getElementById('login-user').value='';
+    document.getElementById('login-pass').value='';
+  }catch(e){toast('Gagal login: '+e.message,'error')}
+  hideLoading();
+}
+function doLogout(){addLog(`Logout: ${currentUser?.name}`,currentUser?.id);currentUser=null;currentStuId=null;showPage('page-login');toast('Berhasil keluar','info')}
+
+async function loadStudent(){
+  const acc=currentUser;
+  document.getElementById('nav-name-stu').textContent=acc.name;
+  document.getElementById('nav-init-stu').textContent=acc.name.charAt(0).toUpperCase();
+  document.getElementById('stu-welcome').textContent=`Selamat Datang, ${acc.name}!`;
+  document.getElementById('dp-name').textContent=acc.name;
+  document.getElementById('dp-nisn').textContent=`NISN: ${acc.nisn}${acc.class?' | Kelas: '+acc.class:''}`;
+  document.getElementById('dp-init').textContent=acc.name.charAt(0).toUpperCase();
+  await loadTemplate();
+  await loadStudentDataFromDB(acc.id);
+  await loadPhoto(acc.id);
+  renderStudentPreview();
+  updateCompleteness();
+}
+async function loadTemplate(){const{data}=await sb.from('template_fields').select('*').order('sort_order');template=data||[]}
+async function loadStudentDataFromDB(sid){const{data}=await sb.from('student_data').select('*').eq('student_id',sid);studentDataCache[sid]={};for(const r of(data||[]))studentDataCache[sid][r.field_id]=r.value}
+async function loadPhoto(sid){const{data}=await sb.from('student_photos').select('photo_base64').eq('student_id',sid).single();if(data?.photo_base64){photosCache[sid]=data.photo_base64;const img=document.getElementById('dp-img');const init=document.getElementById('dp-init');img.src=data.photo_base64;img.style.display='block';init.style.display='none';const pp=document.getElementById('ph-preview');const pph=document.getElementById('ph-placeholder');if(pp){pp.src=data.photo_base64;pp.style.display='block';}if(pph)pph.style.display='none'}}
+
+function renderStudentPreview(){
+  const sid=currentStuId;const data=studentDataCache[sid]||{};
+  const sections=[{title:'Data Pribadi',fields:['Nama Lengkap','Tempat Lahir','Tanggal Lahir','Jenis Kelamin','Agama','Kewarganegaraan','Anak Ke','Jumlah Saudara']},{title:'Alamat',fields:['Alamat Lengkap','Kelurahan/Desa','Kecamatan','Kabupaten/Kota','Provinsi','Kode Pos','No. Telepon','Email']},{title:'Orang Tua/Wali',fields:['Nama Ayah','Pekerjaan Ayah','Nama Ibu','Pekerjaan Ibu','No. HP Orang Tua']},{title:'Data Sekolah',fields:['Asal Sekolah','Tahun Masuk']}];
+  const shown=new Set();let html='';
+  for(const sec of sections){const flds=template.filter(f=>sec.fields.includes(f.name));if(!flds.length)continue;html+=`<div class="dp-sec-title">${sec.title}</div><div class="dp-grid">`;for(const f of flds){shown.add(f.name);const val=data[f.id]||'';html+=`<div class="dp-field"><label>${f.name}${f.required?'<span style="color:var(--danger)">*</span>':''}</label><div class="val${val?'':' empty'}">${val||'Belum diisi'}</div></div>`;}html+=`</div>`;}
+  const extra=template.filter(f=>!shown.has(f.name));if(extra.length){html+=`<div class="dp-sec-title">Lainnya</div><div class="dp-grid">`;extra.forEach(f=>{const val=data[f.id]||'';html+=`<div class="dp-field"><label>${f.name}</label><div class="val${val?'':' empty'}">${val||'Belum diisi'}</div></div>`;});html+=`</div>`;}
+  document.getElementById('dp-body').innerHTML=html||'<p style="color:var(--gray-400);padding:14px">Belum ada template.</p>';
+}
+function renderStudentEditForm(){const sid=currentStuId;const data=studentDataCache[sid]||{};let html='';for(const f of template){let inp='';if(f.type==='textarea')inp=`<textarea id="ef-${f.id}" rows="3">${data[f.id]||''}</textarea>`;else if(f.type==='select'){const opts=(f.options||'').split(',').map(o=>`<option value="${o.trim()}" ${data[f.id]===o.trim()?'selected':''}>${o.trim()}</option>`).join('');inp=`<select id="ef-${f.id}"><option value="">-- Pilih --</option>${opts}</select>`;}else inp=`<input type="${f.type}" id="ef-${f.id}" value="${data[f.id]||''}">`;html+=`<div class="ef-field"><label>${f.name}${f.required?'<span style="color:var(--danger)"> *</span>':''}</label>${inp}</div>`;}document.getElementById('ef-fields').innerHTML=html}
+function toggleEdit(){const ef=document.getElementById('ef-wrap');if(ef.classList.contains('active')){ef.classList.remove('active');renderStudentPreview();}else{renderStudentEditForm();ef.classList.add('active');}}
+async function saveStudentData(){const sid=currentStuId;let valid=true;const upserts=[];for(const f of template){const el=document.getElementById(`ef-${f.id}`);if(!el)continue;if(f.required&&!el.value.trim()){toast(`"${f.name}" wajib diisi!`,'warning');el.style.borderColor='var(--danger)';valid=false;break;}el.style.borderColor='';upserts.push({student_id:sid,field_id:f.id,value:el.value,updated_at:new Date().toISOString()});}if(!valid)return;showLoading();try{const{error}=await sb.from('student_data').upsert(upserts,{onConflict:'student_id,field_id'});if(error)throw error;if(!studentDataCache[sid])studentDataCache[sid]={};for(const u of upserts)studentDataCache[sid][u.field_id]=u.value;await addLog(`Siswa ${currentUser.name} simpan data`,sid);toast('Data berhasil disimpan!','success');toggleEdit();updateCompleteness();}catch(e){toast('Gagal: '+e.message,'error')}hideLoading()}
+function updateCompleteness(){const sid=currentStuId;const data=studentDataCache[sid]||{};if(!template.length)return;const filled=template.filter(f=>data[f.id]?.trim()).length;const pct=Math.round((filled/template.length)*100);document.getElementById('cw-pct').textContent=pct+'%';document.getElementById('cw-fill').style.width=pct+'%';const arc=document.getElementById('cw-arc');if(arc)arc.style.strokeDashoffset=175.9-(175.9*pct/100);document.getElementById('cw-desc').textContent=pct>=100?'Profil 100% lengkap! 🎉':pct>=80?`Hampir! ${template.length-filled} field lagi`:`${filled}/${template.length} terisi`}
+
+async function handlePhoto(e){const file=e.target.files[0];if(!file)return;showLoading();const reader=new FileReader();reader.onload=async ev=>{const dataUrl=ev.target.result;try{const{error}=await sb.from('student_photos').upsert({student_id:currentStuId,photo_base64:dataUrl,updated_at:new Date().toISOString()},{onConflict:'student_id'});if(error)throw error;photosCache[currentStuId]=dataUrl;const img=document.getElementById('dp-img');const init=document.getElementById('dp-init');img.src=dataUrl;img.style.display='block';init.style.display='none';const pp=document.getElementById('ph-preview');const pph=document.getElementById('ph-placeholder');if(pp){pp.src=dataUrl;pp.style.display='block';}if(pph)pph.style.display='none';toast('Foto diperbarui!','success');}catch(err){toast('Gagal upload: '+err.message,'error')}hideLoading();};reader.readAsDataURL(file)}
+function openCam(){document.getElementById('modal-cam').classList.remove('hidden');navigator.mediaDevices.getUserMedia({video:true}).then(s=>{camStream=s;document.getElementById('cam-vid').srcObject=s;}).catch(()=>{toast('Kamera tidak dapat diakses','error');closeCam();document.getElementById('ph-cam').click();})}
+async function capPhoto(){const v=document.getElementById('cam-vid');const c=document.getElementById('cam-cnv');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);const dataUrl=c.toDataURL('image/jpeg',0.8);closeCam();showLoading();try{const{error}=await sb.from('student_photos').upsert({student_id:currentStuId,photo_base64:dataUrl,updated_at:new Date().toISOString()},{onConflict:'student_id'});if(error)throw error;photosCache[currentStuId]=dataUrl;const img=document.getElementById('dp-img');img.src=dataUrl;img.style.display='block';document.getElementById('dp-init').style.display='none';const pp=document.getElementById('ph-preview');if(pp){pp.src=dataUrl;pp.style.display='block';}const pph=document.getElementById('ph-placeholder');if(pph)pph.style.display='none';toast('Foto diambil!','success');}catch(err){toast('Gagal: '+err.message,'error')}hideLoading()}
+function closeCam(){if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}document.getElementById('modal-cam').classList.add('hidden')}
+
+async function loadAdmin(){showLoading();await Promise.all([loadAllStudents(),loadTemplate()]);renderAdminStats();renderStudentTable(allStudents);populateClassFilter();hideLoading()}
+async function loadAllStudents(){const{data}=await sb.from('accounts').select('*').eq('role','student').order('name');allStudents=data||[];const ids=allStudents.map(s=>s.id);if(ids.length){const[{data:sd},{data:ph}]=await Promise.all([sb.from('student_data').select('*').in('student_id',ids),sb.from('student_photos').select('student_id,photo_base64').in('student_id',ids)]);studentDataCache={};for(const s of allStudents)studentDataCache[s.id]={};for(const r of(sd||[])){if(!studentDataCache[r.student_id])studentDataCache[r.student_id]={};studentDataCache[r.student_id][r.field_id]=r.value;}photosCache={};for(const r of(ph||[]))photosCache[r.student_id]=r.photo_base64;}}
+function getPct(sid){const data=studentDataCache[sid]||{};if(!template.length)return 0;return Math.round((template.filter(f=>data[f.id]?.trim()).length/template.length)*100)}
+function renderAdminStats(){const n=allStudents.length;const complete=allStudents.filter(s=>getPct(s.id)>=80).length;const classes=[...new Set(allStudents.map(s=>s.class).filter(Boolean))].length;document.getElementById('adm-stats').innerHTML=`<div class="stat-card"><div class="st-icon" style="background:var(--blue-100)"><svg viewBox="0 0 24 24" stroke="var(--blue-600)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="st-val">${n}</div><div class="st-label">Total Siswa</div></div></div><div class="stat-card"><div class="st-icon" style="background:var(--green-100)"><svg viewBox="0 0 24 24" stroke="var(--green-600)"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="st-val">${complete}</div><div class="st-label">Data Lengkap</div></div></div><div class="stat-card"><div class="st-icon" style="background:#fff8e1"><svg viewBox="0 0 24 24" stroke="var(--warning)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="st-val">${n-complete}</div><div class="st-label">Belum Lengkap</div></div></div><div class="stat-card"><div class="st-icon" style="background:var(--blue-100)"><svg viewBox="0 0 24 24" stroke="var(--blue-600)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><div><div class="st-val">${classes}</div><div class="st-label">Kelas</div></div></div><div class="stat-card"><div class="st-icon" style="background:var(--green-100)"><svg viewBox="0 0 24 24" stroke="var(--green-600)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="st-val">${template.length}</div><div class="st-label">Field</div></div></div>`}
+function populateClassFilter(){const cls=[...new Set(allStudents.map(s=>s.class).filter(Boolean))].sort();const sel=document.getElementById('fcls');sel.innerHTML='<option value="">Semua Kelas</option>'+cls.map(c=>`<option value="${c}">${c}</option>`).join('')}
+function filterStudents(){const q=document.getElementById('srch').value.toLowerCase();const cls=document.getElementById('fcls').value;const cmp=document.getElementById('fcmp').value;const filtered=allStudents.filter(s=>{const mq=s.name.toLowerCase().includes(q)||s.nisn.includes(q)||(s.class||'').toLowerCase().includes(q);const mc=!cls||s.class===cls;const pct=getPct(s.id);const mcp=!cmp||(cmp==='lengkap'?pct>=80:pct<80);return mq&&mc&&mcp});renderStudentTable(filtered)}
+function renderStudentTable(students){const tbody=document.getElementById('stu-tbody');const nomsg=document.getElementById('no-stu');if(!students.length){tbody.innerHTML='';nomsg.classList.remove('hidden');return}nomsg.classList.add('hidden');tbody.innerHTML=students.map((s,i)=>{const pct=getPct(s.id);const ph=photosCache[s.id];const av=ph?`<img src="${ph}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--blue-200)">`:`<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--blue-500),var(--green-500));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px">${s.name.charAt(0).toUpperCase()}</div>`;return`<tr><td style="color:var(--gray-400);font-weight:600">${i+1}</td><td>${av}</td><td style="font-weight:700">${s.name}</td><td><span class="badge b-blue">${s.nisn}</span></td><td>${s.class?`<span class="badge b-green">${s.class}</span>`:'<span class="badge b-gray">—</span>'}</td><td><div style="display:flex;align-items:center;gap:7px"><div class="cb"><div class="cf" style="width:${pct}%"></div></div><span style="font-size:11px;font-weight:700;color:${pct>=80?'var(--green-600)':'var(--gray-400)'}">${pct}%</span></div></td><td><div class="act-btns"><button class="btn-sm btn-view" onclick="adminView('${s.id}')">👁 Lihat</button><button class="btn-sm btn-edit" onclick="adminEdit('${s.id}')">✏️ Edit</button><button class="btn-sm btn-del" onclick="deleteStudent('${s.id}')">🗑</button></div></td></tr>`}).join('')}
+function adminView(sid){const s=allStudents.find(a=>a.id===sid);const data=studentDataCache[sid]||{};const ph=photosCache[sid];const av=ph?`<img src="${ph}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--blue-300)">`:`<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--blue-500),var(--green-500));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:24px">${s.name.charAt(0).toUpperCase()}</div>`;let html=`<div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:14px;background:linear-gradient(135deg,var(--blue-800),var(--blue-900));border-radius:12px;color:#fff">${av}<div><div style="font-size:17px;font-weight:800">${s.name}</div><div style="font-size:12px;opacity:.8">NISN: ${s.nisn} | Kelas: ${s.class||'—'} | ${getPct(sid)}% Lengkap</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px">`;for(const f of template){const val=data[f.id]||'—';html+=`<div class="dp-field"><label>${f.name}</label><div class="val${val==='—'?' empty':''}">${val}</div></div>`;}html+='</div>';document.getElementById('modal-title').textContent=`📋 ${s.name}`;document.getElementById('modal-body').innerHTML=html;document.getElementById('modal-save').style.display='none';document.getElementById('modal-stu').classList.remove('hidden')}
+function adminEdit(sid){editingStuId=sid;const s=allStudents.find(a=>a.id===sid);const data=studentDataCache[sid]||{};let html=`<div style="margin-bottom:14px;padding:11px;background:var(--blue-100);border-radius:8px"><div style="font-weight:700;color:var(--blue-900)">${s.name}</div><div style="font-size:12px;color:var(--blue-600)">NISN: ${s.nisn} | Kelas: ${s.class||'—'}</div></div><div class="ef-grid">`;for(const f of template){let inp='';if(f.type==='textarea')inp=`<textarea id="aef-${f.id}" rows="2">${data[f.id]||''}</textarea>`;else if(f.type==='select'){const opts=(f.options||'').split(',').map(o=>`<option value="${o.trim()}" ${data[f.id]===o.trim()?'selected':''}>${o.trim()}</option>`).join('');inp=`<select id="aef-${f.id}"><option value="">-- Pilih --</option>${opts}</select>`;}else inp=`<input type="${f.type}" id="aef-${f.id}" value="${data[f.id]||''}">`;html+=`<div class="ef-field"><label>${f.name}${f.required?'<span style="color:var(--danger)"> *</span>':''}</label>${inp}</div>`;}html+='</div>';document.getElementById('modal-title').textContent=`✏️ Edit: ${s.name}`;document.getElementById('modal-body').innerHTML=html;document.getElementById('modal-save').style.display='block';document.getElementById('modal-stu').classList.remove('hidden')}
+async function saveAdminEdit(){const sid=editingStuId;const upserts=template.map(f=>{const el=document.getElementById(`aef-${f.id}`);return el?{student_id:sid,field_id:f.id,value:el.value,updated_at:new Date().toISOString()}:null}).filter(Boolean);showLoading();try{const{error}=await sb.from('student_data').upsert(upserts,{onConflict:'student_id,field_id'});if(error)throw error;if(!studentDataCache[sid])studentDataCache[sid]={};for(const u of upserts)studentDataCache[sid][u.field_id]=u.value;const s=allStudents.find(a=>a.id===sid);await addLog(`Admin edit data: ${s.name}`,'admin');toast('Data diperbarui!','success');closeModal();renderStudentTable(allStudents);renderAdminStats();}catch(e){toast('Gagal: '+e.message,'error')}hideLoading()}
+async function deleteStudent(sid){const s=allStudents.find(a=>a.id===sid);if(!confirm(`Hapus "${s.name}"? Data permanen hilang.`))return;showLoading();try{const{error}=await sb.from('accounts').delete().eq('id',sid);if(error)throw error;allStudents=allStudents.filter(a=>a.id!==sid);delete studentDataCache[sid];delete photosCache[sid];await addLog(`Admin hapus: ${s.name}`,'admin');toast('Akun dihapus','success');renderStudentTable(allStudents);renderAccounts();renderAdminStats();populateClassFilter();}catch(e){toast('Gagal: '+e.message,'error')}hideLoading()}
+function closeModal(){document.getElementById('modal-stu').classList.add('hidden');editingStuId=null}
+
+function renderTemplate(){const el=document.getElementById('tmpl-list');if(!template.length){el.innerHTML='<div style="color:var(--gray-400);font-size:13px;padding:12px">Belum ada field.</div>';return}el.innerHTML=template.map((f,i)=>`<div class="tmpl-row"><span style="color:var(--gray-400);font-weight:700;font-size:12px">${i+1}.</span><span class="tr-name">${f.name}</span><span class="tr-type">${f.type}</span>${f.required?'<span class="tr-req">WAJIB</span>':''}${f.options?`<span style="font-size:10px;color:var(--gray-400)">[${f.options}]</span>`:''}<button class="btn-sm btn-del" onclick="removeField('${f.id}')">✕</button></div>`).join('')}
+async function addField(){const name=document.getElementById('nf-name').value.trim();const type=document.getElementById('nf-type').value;const required=document.getElementById('nf-req').checked;const options=document.getElementById('nf-opts').value.trim();if(!name){toast('Nama field wajib','warning');return}if(template.find(f=>f.name===name)){toast('Nama sudah ada','warning');return}const id='f'+Date.now();const sort_order=template.length+1;showLoading();try{const{error}=await sb.from('template_fields').insert({id,name,type,required,options:options||'',sort_order});if(error)throw error;template.push({id,name,type,required,options,sort_order});await addLog(`Admin tambah field: "${name}"`, 'admin');toast(`Field "${name}" ditambahkan`,'success');document.getElementById('nf-name').value='';document.getElementById('nf-opts').value='';document.getElementById('nf-req').checked=false;renderTemplate();renderAdminStats();}catch(e){toast('Gagal: '+e.message,'error')}hideLoading()}
+async function removeField(fid){const f=template.find(x=>x.id===fid);if(!confirm(`Hapus field "${f.name}"?`))return;showLoading();try{const{error}=await sb.from('template_fields').delete().eq('id',fid);if(error)throw error;template=template.filter(x=>x.id!==fid);await addLog(`Admin hapus field: "${f.name}"`, 'admin');toast('Field dihapus','success');renderTemplate();renderAdminStats();}catch(e){toast('Gagal: '+e.message,'error')}hideLoading()}
+
+function renderAccounts(){const tbody=document.getElementById('accs-tbody');if(!allStudents.length){tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:28px">Belum ada akun</td></tr>`;return}tbody.innerHTML=allStudents.map((s,i)=>`<tr><td style="color:var(--gray-400);font-weight:600">${i+1}</td><td style="font-weight:700">${s.name}</td><td><span class="badge b-blue">${s.nisn}</span></td><td>${s.class?`<span class="badge b-green">${s.class}</span>`:'—'}</td><td><span class="badge ${getPct(s.id)>0?'b-green':'b-gray'}">${getPct(s.id)>0?getPct(s.id)+'%':'Kosong'}</span></td><td><button class="btn-sm btn-del" onclick="deleteStudent('${s.id}')">🗑</button></td></tr>`).join('')}
+async function addStudent(){const name=document.getElementById('ns-name').value.trim();const nisn=document.getElementById('ns-nisn').value.trim();const cls=document.getElementById('ns-class').value.trim();if(!name||!nisn){toast('Nama dan NISN wajib','warning');return}if(!/^\d{1,10}$/.test(nisn)){toast('NISN harus angka max 10 digit','warning');return}if(allStudents.find(s=>s.nisn===nisn)){toast('NISN sudah terdaftar','warning');return}const id='stu_'+Date.now();showLoading();try{const{error}=await sb.from('accounts').insert({id,name,nisn,class:cls,role:'student'});if(error)throw error;allStudents.push({id,name,nisn,class:cls,role:'student'});studentDataCache[id]={};await addLog(`Admin tambah akun: "${name}"`,'admin');toast(`Akun "${name}" ditambahkan`,'success');document.getElementById('ns-name').value='';document.getElementById('ns-nisn').value='';document.getElementById('ns-class').value='';renderAccounts();renderStudentTable(allStudents);renderAdminStats();populateClassFilter();}catch(e){toast('Gagal: '+e.message,'error')}hideLoading()}
+
+function downloadTemplate(){const headers=['Nama Lengkap','NISN','Kelas',...template.map(f=>f.name)];const ws=XLSX.utils.aoa_to_sheet([headers]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Template');XLSX.writeFile(wb,'template_buku_induk.xlsx');addLog('Admin download template Excel','admin');toast('Template diunduh!','success')}
+function exportData(){if(!allStudents.length){toast('Belum ada data','warning');return}const headers=['No','Nama','NISN','Kelas','Kelengkapan',...template.map(f=>f.name)];const rows=allStudents.map((s,i)=>{const data=studentDataCache[s.id]||{};return[i+1,s.name,s.nisn,s.class||'',getPct(s.id)+'%',...template.map(f=>data[f.id]||'')]});const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Data Siswa');XLSX.writeFile(wb,`buku_induk_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.xlsx`);addLog('Admin export data','admin');toast('Data diekspor!','success')}
+function exportAccounts(){const headers=['No','Nama','NISN','Kelas'];const rows=allStudents.map((s,i)=>[i+1,s.name,s.nisn,s.class||'']);const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Akun');XLSX.writeFile(wb,'daftar_akun.xlsx');toast('Akun diekspor!','success')}
+async function importExcel(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async ev=>{try{const wb=XLSX.read(ev.target.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];const data=XLSX.utils.sheet_to_json(ws,{header:1});if(data.length<2){toast('File kosong','error');return}const headers=data[0];let added=0,skipped=0;showLoading();for(let i=1;i<data.length;i++){const row=data[i];if(!row||!row[0])continue;const name=String(row[0]||'').trim();const nisn=String(row[1]||'').trim();const cls=String(row[2]||'').trim();if(!name||!nisn||allStudents.find(s=>s.nisn===nisn)){skipped++;continue;}const sid='stu_'+Date.now()+'_'+i;const{error}=await sb.from('accounts').insert({id:sid,name,nisn,class:cls,role:'student'});if(error){skipped++;continue;}allStudents.push({id:sid,name,nisn,class:cls,role:'student'});studentDataCache[sid]={};const upserts=[];for(let j=3;j<headers.length;j++){const fname=headers[j];const f=template.find(x=>x.name===fname);if(f&&row[j]!==undefined)upserts.push({student_id:sid,field_id:f.id,value:String(row[j]),updated_at:new Date().toISOString()});}if(upserts.length)await sb.from('student_data').upsert(upserts,{onConflict:'student_id,field_id'});for(const u of upserts)studentDataCache[sid][u.field_id]=u.value;added++;}await addLog(`Admin import ${added} siswa`,'admin');toast(`Import: ${added} berhasil, ${skipped} skip`,'success');renderStudentTable(allStudents);renderAccounts();renderAdminStats();populateClassFilter();hideLoading();}catch(err){toast('Gagal baca Excel','error');hideLoading();}e.target.value=''};reader.readAsBinaryString(file)}
+
+async function addLog(msg,userId='system'){try{await sb.from('activity_log').insert({message:msg,user_id:userId});}catch(e){}}
+async function renderLog(){const{data}=await sb.from('activity_log').select('*').order('created_at',{ascending:false}).limit(100);const el=document.getElementById('log-list');if(!data?.length){el.innerHTML='<div style="color:var(--gray-400);font-size:13px;padding:12px">Belum ada log.</div>';return}el.innerHTML=data.map(l=>`<div class="log-item"><div class="log-dot"></div><div><div class="log-text">${l.message}</div><div class="log-time">${new Date(l.created_at).toLocaleString('id-ID')}</div></div></div>`).join('')}
+async function clearLog(){if(!confirm('Hapus semua log?'))return;await sb.from('activity_log').delete().neq('id',0);renderLog();toast('Log dihapus','info')}
+</script>
+</body>
+</html>
